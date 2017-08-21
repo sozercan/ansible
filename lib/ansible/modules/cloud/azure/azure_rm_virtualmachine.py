@@ -540,7 +540,7 @@ try:
                                           VirtualHardDisk, ManagedDiskParameters, \
                                           ImageReference, NetworkProfile, LinuxConfiguration, \
                                           SshConfiguration, SshPublicKey, VirtualMachineSizeTypes, \
-                                          DiskCreateOptionTypes, CachingTypes
+                                          DiskCreateOptionTypes, CachingTypes, SubResource
     from azure.mgmt.network.models import PublicIPAddress, NetworkSecurityGroup, NetworkInterface, \
                                           NetworkInterfaceIPConfiguration, Subnet
     from azure.mgmt.storage.models import StorageAccountCreateParameters, Sku
@@ -602,6 +602,7 @@ class AzureRMVirtualMachine(AzureRMModuleBase):
             restarted=dict(type='bool', default=False),
             started=dict(type='bool', default=True),
             data_disks=dict(type='list'),
+            availability_set=dict(type='str'),
         )
 
         self.resource_group = None
@@ -635,6 +636,7 @@ class AzureRMVirtualMachine(AzureRMModuleBase):
         self.started = None
         self.differences = None
         self.data_disks = None
+        self.availability_set = None
 
         self.results = dict(
             changed=False,
@@ -884,6 +886,11 @@ class AzureRMVirtualMachine(AzureRMModuleBase):
                         ssh_config.public_keys = \
                             [SshPublicKey(path=key['path'], key_data=key['key_data']) for key in self.ssh_public_keys]
                         vm_resource.os_profile.linux_configuration.ssh = ssh_config
+
+                    if self.availability_set:
+                        availability_set = self.get_availability_set(self.availability_set)
+                        availability_set_id = availability_set.id
+                        vm_resource.availability_set = SubResource(id=availability_set_id)
 
                     # data disk
                     if self.data_disks:
@@ -1242,6 +1249,13 @@ class AzureRMVirtualMachine(AzureRMModuleBase):
             return nic
         except Exception as exc:
             self.fail("Error fetching network interface {0} - {1}".format(name, str(exc)))
+
+    def get_availability_set(self, name):
+        try:
+            availability_set = self.compute_client.availability_sets.get(self.resource_group, name)
+            return availability_set
+        except Exception as exc:
+            self.fail("Error fetching availability set {0} - {1}".format(name, str(exc)))
 
     def delete_nic(self, name):
         self.log("Deleting network interface {0}".format(name))
