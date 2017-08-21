@@ -153,6 +153,8 @@ EXAMPLES = '''
         location: eastus
         resource_group: my-rg
         public_ip: mypublicip
+        backend_address_pool_name: test
+        load_balancing_rules:
         probe_protocol: Tcp
         probe_port: 80
         probe_interval: 10
@@ -166,6 +168,9 @@ EXAMPLES = '''
         natpool_frontend_port_end: 1040
         natpool_backend_port: 80
         natpool_protocol: Tcp
+        natrule_frontend_port: 1030
+        natrule_backend_port: 80
+        natrule_protocol: Tcp
 '''
 
 RETURN = '''
@@ -192,7 +197,8 @@ try:
         LoadBalancingRule,
         SubResource,
         InboundNatPool,
-        Subnet
+        Subnet,
+        InboundNatRule
     )
 except ImportError:
     # This is handled in azure_rm_common
@@ -281,6 +287,15 @@ class AzureRMLoadBalancer(AzureRMModuleBase):
             ),
             natpool_protocol=dict(
                 type='str'
+            ),
+            natrule_frontend_port=dict(
+                type='int'
+            ),
+            natrule_backend_port=dict(
+                type='int'
+            ),
+            natrule_protocol=dict(
+                type='str'
             )
         )
 
@@ -303,6 +318,9 @@ class AzureRMLoadBalancer(AzureRMModuleBase):
         self.natpool_frontend_port_end = None
         self.natpool_backend_port = None
         self.natpool_protocol = None
+        self.natrule_frontend_port = None
+        self.natrule_backend_port = None
+        self.natrule_protocol = None
 
         self.results = dict(changed=False, state=dict())
 
@@ -448,6 +466,18 @@ class AzureRMLoadBalancer(AzureRMModuleBase):
                 )
             ]
 
+        inbound_nat_rule_name = random_name('inr')
+        if self.natrule_protocol:
+            load_balancer_props['inbound_nat_rules'] = [
+                InboundNatRule(
+                    name=inbound_nat_rule_name,
+                    frontend_ip_configuration=Subnet(id=frontend_ip_config_id),
+                    protocol=self.natrule_protocol,
+                    frontend_port=self.natrule_frontend_port,
+                    backend_port=self.natrule_backend_port
+                )
+            ]
+
         self.results['changed'] = changed
         self.results['state'] = (
             results if results
@@ -565,7 +595,7 @@ def load_balancer_to_dict(load_balancer):
             frontend_port=_.frontend_port,
             backend_port=_.backend_port,
             idle_timeout_in_minutes=_.idle_timeout_in_minutes,
-            enable_floating_point_ip=_.enable_floating_point_ip,
+            enable_floating_ip=_.enable_floating_ip,
             provisioning_state=_.provisioning_state,
             etag=_.etag
         ) for _ in load_balancer.inbound_nat_rules]
