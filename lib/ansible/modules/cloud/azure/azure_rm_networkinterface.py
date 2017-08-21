@@ -503,11 +503,12 @@ class AzureRMNetworkInterface(AzureRMModuleBase):
                     #nic.name = self.name
                     nic.ip_configurations[0].subnet = Subnet(id=subnet.id)
 
-                    if lb.backend_address_pools:
-                        nic.ip_configurations[0].load_balancer_backend_address_pools = [BackendAddressPool(id=lb.backend_address_pools[0].id)]
+                    if self.load_balancer_name:
+                        if lb.backend_address_pools:
+                            nic.ip_configurations[0].load_balancer_backend_address_pools = [BackendAddressPool(id=lb.backend_address_pools[0].id)]
 
-                    if lb.inbound_nat_rules:
-                        nic.ip_configurations[0].load_balancer_inbound_nat_rules = [InboundNatRule(id=lb.inbound_nat_rules[0].id)]
+                        if lb.inbound_nat_rules:
+                            nic.ip_configurations[0].load_balancer_inbound_nat_rules = [InboundNatRule(id=lb.inbound_nat_rules[0].id)]
 
                     nic.ip_configurations[0].name = 'default'
                     nic.network_security_group = NetworkSecurityGroup(id=nsg.id,
