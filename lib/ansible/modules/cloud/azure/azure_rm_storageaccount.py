@@ -146,7 +146,8 @@ try:
     from azure.common import AzureMissingResourceHttpError
     from azure.mgmt.storage.models import ProvisioningState, SkuName, SkuTier, Kind
     from azure.mgmt.storage.models import StorageAccountUpdateParameters, CustomDomain, \
-                                          StorageAccountCreateParameters, Sku
+                                          StorageAccountCreateParameters, Sku, \
+                                          StorageAccountListKeysResult, StorageAccountKey
 except ImportError:
     # This is handled in azure_rm_common
     pass
@@ -246,6 +247,10 @@ class AzureRMStorageAccount(AzureRMModuleBase):
             self.log('Error name not available.')
             self.fail("{0} - {1}".format(response.message, response.reason))
 
+    def get_account_keys(self):
+        account_keys = self.storage_client.storage_accounts.list_keys(self.resource_group, self.name)
+        return account_keys
+
     def get_account(self):
         self.log('Get properties for account {0}'.format(self.name))
         account_obj = None
@@ -299,6 +304,10 @@ class AzureRMStorageAccount(AzureRMModuleBase):
                 queue=account_obj.secondary_endpoints.queue,
                 table=account_obj.secondary_endpoints.table
             )
+
+        account_keys = self.get_account_keys()
+        account_dict['primary_key'] = account_keys.keys[0].value
+
         account_dict['tags'] = None
         if account_obj.tags:
             account_dict['tags'] = account_obj.tags
